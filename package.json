@@ -1,0 +1,1 @@
+{"name":"devops-lab2-app","version":"1.0.0","private":true,"description":"DevOps Lab 2 Docker demo","main":"server.js","scripts":{"start":"node server.js"}}
