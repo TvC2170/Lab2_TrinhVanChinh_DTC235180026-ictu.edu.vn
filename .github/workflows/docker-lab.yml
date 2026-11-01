@@ -1,0 +1,43 @@
+name: DevOps Lab 2 Docker build and smoke check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-smoke-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build --tag devops-lab2-app .
+
+      - name: Start container and verify HTTP response
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --publish 3000:3000 --name lab2-app devops-lab2-app
+          trap 'docker logs lab2-app; docker rm --force lab2-app' EXIT
+          for attempt in {1..20}; do
+            if response="$(curl --fail --silent http://localhost:3000)"; then
+              break
+            fi
+            sleep 1
+          done
+          echo "$response" | tee docker-response.json
+          node -e "const r=require('./docker-response.json'); if(r.message!=='Hello from Docker!' || r.platform!=='linux') process.exit(1)"
+          echo 'Container HTTP response verified.'
+
+      - name: Save response as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-smoke-check-response
+          path: docker-response.json
+          if-no-files-found: ignore
